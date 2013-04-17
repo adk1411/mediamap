@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Upload your photos of accident</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="js/vendor/jquery-1.9.1.min.js"></script>
+	<script type="text/javascript" src="js/vendor/bootstrap.js"></script>
+	<link rel="stylesheet" href="css/bootstrap.min.css"/>
+	<style type="text/css">
+		iframe#uploadFrame {
+			width: 0;
+			height: 0;
+		}
+
+		.uploading {
+			display: none;
+		}
+	</style>
+</head>
+<body>
+<div class="navbar">
+	<div class="navbar-inner">
+		<a class="brand" href="#">Boston project</a>
+		<ul class="nav">
+			<li><a href="/">Home</a></li>
+			<li><a href="/upload.html">Upload photos</a></li>
+		</ul>
+	</div>
+</div>
+<div class="container">
+
+	<div class="uploading">
+		<h1>Uploading photos please wait</h1>
+		<div class="lead">Once uploaded you will have a chance to correct photo location if required</div>
+		<div class="progress progress-striped active"><div class="bar" style="width: 100%;"></div></div>
+	</div>
+	<iframe frameborder="0" id="uploadFrame"></iframe>
+	<form
+		id="uploadForm"
+		class="form-horizontal"
+		action="/api/upload.json?callback=callback"
+		enctype="multipart/form-data"
+		target="uploadFrame"
+		method="POST"
+	>
+		<p class="lead">Upload photos using form below. After upload will be done - you will be able to customize photo details.</p>
+		<div class="control-group">
+			<label class="control-label" for="photos">Select photos</label>
+
+			<div class="controls">
+				<input id="photos" type="file" multiple/>
+			</div>
+		</div>
+		<div class="control-group">
+			<div class="controls">
+				<label class="checkbox">
+				  <input type="checkbox" name="privacyPolicy" value="agree">
+				  I've read and I agree to terms of <a href="privacy-policy.html">privacy policy</a>.
+				</label>
+			</div>
+		</div>
+
+		<div class="form-actions">
+			<input type="submit" value="Upload photos" class="btn btn-primary"/>
+		</div>
+	</form>
+</div>
+<script type="text/javascript">
+$('form#uploadForm').submit(function(ev){
+	if($('[name="privacyPolicy"]:checked').length == 0) {
+		alert('You need to agree to privacy policy. Otherwise we cannot upload and publish your photos.');
+		ev.preventDefault();
+		return;
+	}
+	$('.uploading').show();
+	$('form#uploadForm').hide();
+
+});
+callback = function(result){
+	$('.uploading').show();
+	if(result && result.errors && result.errors.length > 0){
+		$('<div class=""></div>')
+	}
+};
+</script>
+</body>
+</html>
