@@ -4,23 +4,30 @@
 	<title>Upload your photos of accident</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script type="text/javascript" src="js/vendor/jquery-1.9.1.min.js"></script>
-	<script type="text/javascript" src="js/vendor/bootstrap.js"></script>
+	<script type="text/javascript" src="js/vendor/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/vendor/underscore-min.js"></script>
+	<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script>
 	<link rel="stylesheet" href="css/bootstrap.min.css"/>
+	<link rel="stylesheet" href="css/bootstrap-responsive.min.css"/>
 	<style type="text/css">
-		iframe#uploadFrame {
+		iframe#upload-frame {
 			width: 0;
 			height: 0;
 		}
 
-		.uploading {
+		.uploading, .templates, #review {
 			display: none;
+		}
+
+		.map {
+			height: 200px;
 		}
 	</style>
 </head>
 <body>
 <div class="navbar">
 	<div class="navbar-inner">
-		<a class="brand" href="#">Boston project</a>
+		<a class="brand" href="#">Mediamap</a>
 		<ul class="nav">
 			<li><a href="/">Home</a></li>
 			<li><a href="/upload.html">Upload photos</a></li>
@@ -34,15 +41,16 @@
 		<div class="lead">Once uploaded you will have a chance to correct photo location if required</div>
 		<div class="progress progress-striped active"><div class="bar" style="width: 100%;"></div></div>
 	</div>
-	<iframe frameborder="0" id="uploadFrame"></iframe>
+	<iframe frameborder="0" id="upload-frame"></iframe>
 	<form
-		id="uploadForm"
+		id="upload-form"
 		class="form-horizontal"
 		action="/api/upload.json?callback=callback"
 		enctype="multipart/form-data"
-		target="uploadFrame"
+		target="upload-frame"
 		method="POST"
 	>
+		<div class="alerts"></div>
 		<p class="lead">Upload photos using form below. After upload will be done - you will be able to customize photo details.</p>
 		<div class="control-group">
 			<label class="control-label" for="photos">Select photos</label>
@@ -64,24 +72,135 @@
 			<input type="submit" value="Upload photos" class="btn btn-primary"/>
 		</div>
 	</form>
+	<form id="review">
+
+	</form>
 </div>
+
+<div class="templates">
+	<script type="text/template" id="alert-template">
+		<div class="alert">
+			<button type="button" class="close" data-dismiss="alert">&times;</button>
+			<%= error %>
+		</div>
+	</script>
+
+	<script type="text/template" id="uploaded-photo-template">
+		<div class="row" data-photo-id="<%= photo.id %>">
+			<div class="span4">
+				<img class="img-polaroid" src="<%= photo.small %>" alt=""/>
+			</div>
+			<div class="span8">
+				<div class="control-group">
+					<label class="control-label">Date&time taken</label>
+
+					<div class="controls">
+						<input type="text" required name="date" value="<%= photo.dateString %>" />
+						<input type="text" required name="time" value="<%= photo.timeString %>" />
+					</div>
+				</div>
+				<div class="map"></div>
+			</div>
+		</div>
+	</script>
+</div>
+
 <script type="text/javascript">
-$('form#uploadForm').submit(function(ev){
+$('form#upload-form').submit(function(ev){
 	if($('[name="privacyPolicy"]:checked').length == 0) {
 		alert('You need to agree to privacy policy. Otherwise we cannot upload and publish your photos.');
 		ev.preventDefault();
 		return;
 	}
+	$('.alerts').empty();
 	$('.uploading').show();
-	$('form#uploadForm').hide();
-
+	$('form#upload-form').hide();
 });
+
+var workaround = function(){
+	callback({
+//			errors: [
+//				'error'
+//			]
+		photos: [
+			{
+				id: 'ewhb1234lnmfjgs', // should be random to prevent accessing other people photos data
+				original: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-large.jpg",
+				large: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-large.jpg",
+				small: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-small.jpg",
+				tiny: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-tiny.jpg",
+				date: '2013-04-11T09:56:20-04:00',
+				lat: 42.353427,
+				long: -71.0573228
+			}
+		]
+	})
+}
+
+var tmpls = {};
+var tmpl = function(name, args){
+	if(tmpls[name]){
+		return tmpls[name](args);
+	}
+	// remove whitespaces until first tag
+	var text = $('.templates #'+ name +'-template').html().replace(/^[\s\n]*/m, '');
+	var tmpl = tmpls[name] = _.template(text);
+	return tmpl(args);
+};
+
 callback = function(result){
-	$('.uploading').show();
+	$('.uploading').hide();
+
 	if(result && result.errors && result.errors.length > 0){
-		$('<div class=""></div>')
+		for(var ii = 0; ii < result.errors.length; ii++){
+			$(tmpl('alert', {error: result.errors[ii]})).appendTo('#upload-form .alerts')
+		}
+		$('form#upload-form').show();
+		return;
+	}
+
+	// Success
+	var container = $('#review').show();
+	var isDirty = false;
+	for(var ii = 0; ii < result.photos.length; ii++){
+		(function(photo){
+			var date = photo.dateObj = new Date(photo.date);
+			photo.dateString = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+			photo.timeString = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+			var el = $(tmpl('uploaded-photo', {photo: photo})).appendTo(container);
+			var point = null;
+			if(photo.lat && photo.long){
+				point = new google.maps.LatLng(photo.lat, photo.long);
+			} else {
+				// default to coordinates
+				point = new google.maps.LatLng(42.349778, -71.078917);
+			}
+
+			var map = new google.maps.Map(el.find('.map').get(0), {
+				zoom: 13,
+				center: point,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			});
+			var marker = new google.maps.Marker({
+				position: point,
+				draggable: true,
+				map: map
+			});
+			google.maps.event.addListener(marker, 'dragend', function(){
+				// TODO update coordinates
+				var latlng = marker.getPosition();
+				photo.lat = latlng.lat();
+				photo.long = latlng.lng();
+				isDirty = true;
+			});
+		})(result.photos[ii]);
 	}
 };
+
+// TODO debug. remove
+$('form#upload-form').hide();
+workaround();
+
 </script>
 </body>
 </html>
