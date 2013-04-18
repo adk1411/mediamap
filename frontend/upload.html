@@ -22,6 +22,10 @@
 		.map {
 			height: 200px;
 		}
+
+		.map img {
+		  max-width: none;
+		}
 	</style>
 </head>
 <body>
@@ -49,6 +53,7 @@
 		enctype="multipart/form-data"
 		target="upload-frame"
 		method="POST"
+	    accept="image/*"
 	>
 		<div class="alerts"></div>
 		<p class="lead">Upload photos using form below. After upload will be done - you will be able to customize photo details.</p>
@@ -130,12 +135,12 @@ var workaround = function(){
 				small: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-small.jpg",
 				tiny: "http://s3.amazonaws.com/collectible-asset-image-scaled-az2d4g54ju3f/82a060d79c4d4e5990d0eba8309bbc63-56UHpLyPff-tiny.jpg",
 				date: '2013-04-11T09:56:20-04:00',
-				lat: 42.353427,
-				long: -71.0573228
+				lat: 42.349778,
+				long: -71.078917
 			}
 		]
 	})
-}
+};
 
 var tmpls = {};
 var tmpl = function(name, args){
@@ -177,7 +182,7 @@ callback = function(result){
 			}
 
 			var map = new google.maps.Map(el.find('.map').get(0), {
-				zoom: 13,
+				zoom: 18,
 				center: point,
 				mapTypeId: google.maps.MapTypeId.ROADMAP
 			});
